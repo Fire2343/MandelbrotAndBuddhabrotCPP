@@ -1,2 +1,2 @@
 # MandelbrotCPP
-Uses the CIMG library
+Uses the CImg library
