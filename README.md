@@ -1,2 +1,2 @@
-# MandelbrotCPP
+# MandelbrotAndBuddhabrotCPP
 Uses the CImg library
