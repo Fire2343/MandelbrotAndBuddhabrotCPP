@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <chrono>
 #include <random>
 #include <thread>
 #include "CImg.h"
@@ -42,6 +43,24 @@ double outsideMandelbrot(double number[2], int iterations) {
 	return result;
 }
 
+double outsideMandelbrotOpt(double r, double i, int iterations) {
+	double zr = 0;
+	double zi = 0;
+	double result;
+	for (int iter = 0; iter < iterations; iter++) {
+		
+		double zrt = zr * zr - zi * zi + r;
+		zi = 2 * zr * zi + i;
+		zr = zrt;
+		result = zr * zr + zi * zi;
+
+		if (result > 2.0) {
+			return result * -1;
+		}
+	}
+	return result;
+}
+
 vector<vector<double>> buddahBrotFunction(double number[2], int iterations) {
 	double z[2] = {0.0 , 0.0};
 	double abs;
@@ -63,6 +82,32 @@ vector<vector<double>> buddahBrotFunction(double number[2], int iterations) {
 		cnumber[1] = z[1];
  		result.push_back(cnumber);
 		//cout << "result is" << result[result.size() - 1][0] << " " << result[result.size() - 1][1] << endl;
+	}
+	return result;
+}
+
+vector<vector<double>> buddahBrotFunctionOpt(double r, double i, int iterations) {
+	double zr = 0;
+	double zi = 0;
+	double absSquared;
+	vector<vector<double>> result;
+	vector<double> cnumber;
+	cnumber.push_back(r);
+	cnumber.push_back(i);
+	result.push_back(cnumber);
+	for (int iter = 0; iter < iterations; iter++) {
+		double zrt = zr * zr - zi * zi + r;
+		zi = 2 * zr * zi + i;
+		zr = zrt;
+		absSquared = zr * zr + zi * zi;
+		if (absSquared > 2.0) {
+			break;
+		}
+		//if (iter > 10) {
+			cnumber[0] = zr;
+			cnumber[1] = zi;
+			result.push_back(cnumber);
+		//}
 	}
 	return result;
 }
@@ -94,6 +139,44 @@ void mandelbrot(int imageWidth, int imageHeight, double rAxisMinimum, double rAx
 		}
 		iPixelCounter = 0;
 		rPixelCounter++;
+		cout << rPixelCounter << endl;
+	}
+	CImgDisplay display(mandelbrot, "", 0);
+	mandelbrot.save("test.bmp");
+	while (!display.is_closed()) {
+		display.wait();
+	}
+}
+
+void mandelbrotOpt(int imageWidth, int imageHeight, double rAxisMinimum, double rAxisMaximum, double iAxisMinimum, double iAxisMaximum, int iterations) {
+
+	double rAbs = abs(rAxisMaximum - rAxisMinimum);
+	double iAbs = abs(iAxisMaximum - iAxisMinimum);
+	CImg<double> mandelbrot(imageWidth, imageHeight, imgDepth, imgSpectrum, 0);
+	double color[3];
+	color[0] = 0;
+	color[1] = 0;
+	color[2] = 0;
+	double rPixelValue = rAbs / imageWidth;
+	double iPixelValue = iAbs / imageHeight;
+	int rPixelCounter = 0;
+	int iPixelCounter = 0;
+	for (double r = 0; r < rAbs; r += rPixelValue) {
+		for (double i = 0; i < iAbs; i += iPixelValue) {
+			double rn = r + rAxisMinimum;
+			double in = i + iAxisMinimum;
+			double result = outsideMandelbrotOpt(rn, in, iterations);
+			if (result < 0) {
+				color[0] = 255 / abs(result);
+				color[1] = 0 / abs(result);
+				color[2] = 0 / abs(result);
+				mandelbrot.draw_point(rPixelCounter, imageHeight - iPixelCounter, color);
+			}
+			iPixelCounter++;
+		}
+		iPixelCounter = 0;
+		rPixelCounter++;
+		cout << rPixelCounter << endl;
 	}
 	CImgDisplay display(mandelbrot, "", 0);
 	mandelbrot.save("test.bmp");
@@ -136,9 +219,65 @@ void buddahbrot(int imageWidth, int imageHeight, double rAxisMinimum, double rAx
 				}
 			}
 		}
-		//cout << yPixel << endl;
+		cout << yPixel << endl;
 	}
 	
+	vector <int> colorInitValues;
+	colorInitValues.push_back(color[0]);
+	colorInitValues.push_back(color[1]);
+	colorInitValues.push_back(color[2]);
+
+	for (int y = 0; y < matrix.size(); y++) {
+		for (int x = 0; x < matrix[y].size(); x++) {
+			color[0] = matrix[y][x] * colorInitValues[0];
+			color[1] = matrix[y][x] * colorInitValues[1];
+			color[2] = matrix[y][x] * colorInitValues[2];
+			(*buddahbrot).draw_point(x, y, color);
+		}
+	}
+}
+
+void buddahbrotOpt(int imageWidth, int imageHeight, double rAxisMinimum, double rAxisMaximum, double iAxisMinimum, double iAxisMaximum, int iterations, int* color, CImg<double>* buddahbrot, int sampleSize) {
+
+	unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+	mt19937 generator(seed);
+	uniform_real_distribution<double> rDistribution(0.0, 4.0);
+	uniform_real_distribution<double> iDistribution(0.0, 2.0);
+	
+	double rAbs = abs(rAxisMaximum - rAxisMinimum);
+	double iAbs = abs(iAxisMaximum - iAxisMinimum);
+	double rPixelValue = rAbs / imageWidth;
+	double iPixelValue = iAbs / imageHeight;
+
+	vector<int> width(imageWidth, 0);
+	vector<vector<int>> matrix(imageHeight, width);
+	for (int s = 0; s < sampleSize; s++) {
+		double r = rDistribution(generator);
+		double i = iDistribution(generator);
+		double rn = r + rAxisMinimum;
+		double in = i + iAxisMinimum;
+		vector<vector<double>> toColor = buddahBrotFunctionOpt(rn, in, iterations);
+		if (toColor.size() < iterations + 1) {
+			for (int i = 0; i < toColor.size(); i++) {
+				if (abs(0 - toColor[i][0]) <= rAxisMaximum && abs(0 - toColor[i][1]) <= iAxisMaximum) {
+					int x = (toColor[i][0] - rAxisMinimum) / rPixelValue;
+					if (x > 0) {
+						x--;
+					}
+					int y = (toColor[i][1] - iAxisMinimum) / iPixelValue;
+					if (y > 0) {
+						y--;
+					}
+					//cout << "i is" << i << endl;
+					//cout << toColor[i][0] << " " << toColor[i][1] << endl;
+					//cout << x << " " << y << endl;
+					matrix[y][x] = matrix[y][x] + 1;
+				}
+			}
+		}
+		cout << s << endl;
+	}
+
 	vector <int> colorInitValues;
 	colorInitValues.push_back(color[0]);
 	colorInitValues.push_back(color[1]);
@@ -180,16 +319,19 @@ int main(){
 	if (selection == 1) {
 		cout << "insert number of iterations of the mandelbrot function for each point" << endl;
 		cin >> iterations;
-		mandelbrot(imageWidth, imageHeight, rAxisMinimum, rAxisMaximum, iAxisMinimum, iAxisMaximum, iterations);
+		mandelbrotOpt(imageWidth, imageHeight, rAxisMinimum, rAxisMaximum, iAxisMinimum, iAxisMaximum, iterations);
 	}
 
 	if (selection == 2) {
 		cout << "insert number of iterations of the mandelbrot function for each point" << endl;
 		cin >> iterations;
+		int sampleSize;
+		cout << "insert points sample size" << endl;
+		cin >> sampleSize;
 		cout << "insert r,g,b values to color buddahbrot with" << endl;
 		cin >> color[0] >> color[1] >> color[2];
 		CImg<double> buddahbrotImg(imageWidth, imageHeight, imgDepth, imgSpectrum, 0);
-		buddahbrot(imageWidth, imageHeight, rAxisMinimum, rAxisMaximum, iAxisMinimum, iAxisMaximum, iterations, color, &buddahbrotImg);
+		buddahbrotOpt(imageWidth, imageHeight, rAxisMinimum, rAxisMaximum, iAxisMinimum, iAxisMaximum, iterations, color, &buddahbrotImg, sampleSize);
 		
 		CImgDisplay display(buddahbrotImg, "", 0);
 		buddahbrotImg.save("bruddah.bmp");
