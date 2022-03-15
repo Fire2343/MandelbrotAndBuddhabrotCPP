@@ -172,7 +172,7 @@ void mandelbrotOpt(int imageWidth, int imageHeight, double rAxisMinimum, double 
 	}
 }
 
-void buddahbrot(double rAxisMinimum, double rAxisMaximum, double iAxisMinimum, double iAxisMaximum, int imageWidth, int imageHeight, int iterations, vector<vector<vector<double>>>* orbits, int sampleSize, int threadID) {
+void buddahbrot(double rAxisMinimum, double rAxisMaximum, double iAxisMinimum, double iAxisMaximum, int imageWidth, int imageHeight, int iterations, deque<vector<vector<double>>>* orbits, int sampleSize, int threadID) {
 
 	
 	unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
@@ -188,12 +188,19 @@ void buddahbrot(double rAxisMinimum, double rAxisMaximum, double iAxisMinimum, d
 		double rn = r + rAxisMinimum;
 		double in = i + iAxisMinimum;
 		
-		lock_guard<mutex> guard(vectorMutex);
-		(*orbits).push_back(buddahBrotFunctionOpt(rn, in, iterations));
-
-		if (threadID == 0) {
-			cout << s << endl;
+		
+		//cout << "iran" << endl;
+		//lock_guard<mutex> guard(vectorMutex);
+		vectorMutex.lock();
+		if ((*orbits).size() < 10000) {
+			(*orbits).push_back(buddahBrotFunctionOpt(rn, in, iterations));
 		}
+		vectorMutex.unlock();
+		
+
+		/*if (threadID == 0) {
+			cout << threadID << " " << s << endl;
+		}*/
 	}
 }
 
@@ -350,7 +357,7 @@ int main(){
 		double iAxisMinimum = -1.0;
 		
 		
-		vector<vector<vector<double>>> orbits;
+		deque<vector<vector<double>>> orbits;
 		vector<int> width(imageWidth, 0);
 		vector<vector<int>> matrix(imageHeight, width);
 		
@@ -365,29 +372,36 @@ int main(){
 			thread newThread(buddahbrot, rAxisMinimum, rAxisMaximum, iAxisMinimum, iAxisMaximum, imageWidth, imageHeight, iterations, &orbits, (sampleSize / threadNumber), t);
 			threads.push_back(move(newThread));
 		}
-		for (int t = 0; t < threadNumber; t++) {
-			(threads[t]).join();
-		}
-		for (int oi = 0; oi < orbits.size(); oi++) {
-			if (orbits[oi].size() < iterations + 1) {
-				for (int ci = 0; ci < orbits[oi].size(); ci++) {
-					double r = orbits[oi][ci][0];
-					double i = orbits[oi][ci][1];
-					if (abs(0 - r) <= rAxisMaximum && abs(0 - i) <= iAxisMaximum) {
-						int x = (r - rAxisMinimum) / rPixelValue;
-						if (x > 0) {
-							x--;
-						}
-						int y = (i - iAxisMinimum) / iPixelValue;
-						if (y > 0) {
-							y--;
-						}
+		while (sampleSize > 0) {
+			vectorMutex.lock();
+			while (orbits.size() > 0) {
+				if (orbits[0].size() < iterations + 1) {
+					for (int ci = 0; ci < orbits[0].size(); ci++) {
+						double r = orbits[0][ci][0];
+						double i = orbits[0][ci][1];
+						if (abs(0 - r) <= rAxisMaximum && abs(0 - i) <= iAxisMaximum) {
+							int x = (r - rAxisMinimum) / rPixelValue;
+							if (x > 0) {
+								x--;
+							}
+							int y = (i - iAxisMinimum) / iPixelValue;
+							if (y > 0) {
+								y--;
+							}
 
-						//cout << x << " " << y << endl;
-						matrix[y][x] = matrix[y][x] + 1;
+							//cout << x << " " << y << endl;
+							matrix[y][x] = matrix[y][x] + 1;
+						}
 					}
 				}
+				orbits.pop_front();
+				sampleSize--;
 			}
+			vectorMutex.unlock();
+		}
+		
+		for (int t = 0; t < threadNumber; t++) {
+			(threads[t]).join();
 		}
 
 		int colorInitValues[3] = {color[0], color[1], color[2]};
