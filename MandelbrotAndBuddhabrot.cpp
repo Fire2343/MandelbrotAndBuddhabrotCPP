@@ -128,8 +128,9 @@ vector<vector<double>> buddahBrotFunctionOpt(double r, double i, int iterations)
 void mandelbrotOpt(int imageWidth, int imageHeight, double rAxisCenter, double iAxisCenter, int iterations, double zoomFactor) {
 
 	
-	double rHalfWidth = (2.0 - abs(rAxisCenter)) / zoomFactor;
-	double iHalfWidth = (1.0 - abs(iAxisCenter)) / zoomFactor;
+	double imgWidthToHeightRatio = ((double)imageWidth) / ((double)imageHeight);
+	double rHalfWidth = (1.0  * imgWidthToHeightRatio) / zoomFactor;
+	double iHalfWidth = 1.0 / zoomFactor;
 
 	double rAxisMinimum = rAxisCenter - rHalfWidth;
 	double rAxisMaximum = rAxisCenter + rHalfWidth;
