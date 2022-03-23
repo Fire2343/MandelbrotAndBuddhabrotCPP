@@ -34,24 +34,10 @@ double complexAbs(double number[2]) {
 	return result;
 }
 
-double outsideMandelbrot(double number[2], int iterations) {
-	double z[2] = {0.0, 0.0};
-	double result;
-	for (int iter = 0; iter < iterations; iter++) {
-		double* square = squareOfComplex(z);
-		z[0] = square[0] + number[0];
-		z[1] = square[1] + number[1];
-		result = complexAbs(z);
-		if (result > 2.0) {
-			return result * -1;
-		}
-	}
-	return result;
-}
-
-double outsideMandelbrotOpt(double r, double i, int iterations) {
+int outsideMandelbrotOpt(double r, double i, int iterations) {
 	double absSquared = r * r + i * i;
 	double result = 0;
+	int iter = 0;
 	if (absSquared * (8 * absSquared - 3) <= (double)3 / 32 - r) { //checks if inside main carinoid
 		//cout << "iran" << endl;
 		return result;
@@ -59,18 +45,19 @@ double outsideMandelbrotOpt(double r, double i, int iterations) {
 
 	double zr = 0;
 	double zi = 0;
-	for (int iter = 0; iter < iterations; iter++) {
+	while (iter < iterations) {
 
 		double zrt = zr * zr - zi * zi + r;
 		zi = 2 * zr * zi + i;
 		zr = zrt;
-		result = zr * zr + zi * zi;
+		result = sqrt(zr * zr + zi * zi);
+		iter++;
 
 		if (result > 2.0) {
-			return result * -1;
+			break;
 		}
 	}
-	return result;
+	return iter;
 }
 
 double F(vector<vector<double>> orbit, double rAxisMaximum, double iAxisMaximum) {
@@ -138,7 +125,17 @@ vector<vector<double>> buddahBrotFunctionOpt(double r, double i, int iterations)
 	return result;
 }
 
-void mandelbrotOpt(int imageWidth, int imageHeight, double rAxisMinimum, double rAxisMaximum, double iAxisMinimum, double iAxisMaximum, int iterations) {
+void mandelbrotOpt(int imageWidth, int imageHeight, double rAxisCenter, double iAxisCenter, int iterations, double zoomFactor) {
+
+	
+	double rHalfWidth = (2.0 - abs(rAxisCenter)) / zoomFactor;
+	double iHalfWidth = (1.0 - abs(iAxisCenter)) / zoomFactor;
+
+	double rAxisMinimum = rAxisCenter - rHalfWidth;
+	double rAxisMaximum = rAxisCenter + rHalfWidth;
+	double iAxisMinimum = iAxisCenter - iHalfWidth;
+	double iAxisMaximum = iAxisCenter + iHalfWidth;
+
 
 	double rAbs = abs(rAxisMaximum - rAxisMinimum);
 	double iAbs = abs(iAxisMaximum - iAxisMinimum);
@@ -155,11 +152,11 @@ void mandelbrotOpt(int imageWidth, int imageHeight, double rAxisMinimum, double 
 		for (double i = 0; i < iAbs; i += iPixelValue) {
 			double rn = r + rAxisMinimum;
 			double in = i + iAxisMinimum;
-			double result = outsideMandelbrotOpt(rn, in, iterations);
-			if (result < 0) {
-				color[0] = 255 / abs(result);
-				color[1] = 0 / abs(result);
-				color[2] = 0 / abs(result);
+			int iters = outsideMandelbrotOpt(rn, in, iterations);
+			if (iters < iterations - 1) {
+				color[0] = 0.3 * iters;
+				color[1] = 0.5 * iters;
+				color[2] = 1.0 * iters;
 				mandelbrot.draw_point(rPixelCounter, imageHeight - iPixelCounter, color);
 			}
 			iPixelCounter++;
@@ -214,19 +211,18 @@ int main(){
 	int iterations = 0;
 	int color[3] = {0, 0, 0};
 	if (selection == 1) {
-		double rAxisMinimum;
-		double rAxisMaximum;
-		double iAxisMinimum;
-		double iAxisMaximum;
-		cout << "please input the minimum and maximum real axis coordinates of the desired image" << endl;
-		cin >> rAxisMinimum >> rAxisMaximum;
-		double rAbs = abs(rAxisMaximum - rAxisMinimum);
-		cout << "please input the minimum and maximum imaginary axis coordinates of the desired image" << endl;
-		cin >> iAxisMinimum >> iAxisMaximum;
-		double iAbs = abs(iAxisMaximum - iAxisMinimum);
+		double rAxisCenter;
+		double iAxisCenter;
+		double zoomFactor;
+		cout << "please input the center real axis coordinates of the desired image" << endl;
+		cin >> rAxisCenter;
+		cout << "please input the center imaginary axis coordinates of the desired image" << endl;
+		cin >> iAxisCenter;
+		cout << "insert zoom factor (>=1)" << endl;
+		cin >> zoomFactor;
 		cout << "insert number of iterations of the mandelbrot function for each point" << endl;
 		cin >> iterations;
-		mandelbrotOpt(imageWidth, imageHeight, rAxisMinimum, rAxisMaximum, iAxisMinimum, iAxisMaximum, iterations);
+		mandelbrotOpt(imageWidth, imageHeight, rAxisCenter, iAxisCenter, iterations, zoomFactor);
 	}
 
 	if (selection == 2) {
@@ -307,8 +303,6 @@ int main(){
 					cout << "orbits size is: " << orbits.size() << endl;
 				}
 			}
-			//ready = true;
-			//cv.notify_all();
 		}
 		
 		for (int t = 0; t < threadNumber; t++) {
