@@ -39,7 +39,6 @@ int outsideMandelbrotOpt(double r, double i, int iterations) {
 	double result = 0;
 	int iter = 0;
 	if (absSquared * (8 * absSquared - 3) <= (double)3 / 32 - r) { //checks if inside main carinoid
-		//cout << "iran" << endl;
 		return result;
 	}
 
@@ -99,7 +98,6 @@ vector<vector<double>> buddahBrotFunctionOpt(double r, double i, int iterations)
 	vector<vector<double>> result;
 	
 	if (absSquared * (8 * absSquared - 3) <= (double)3 / 32 - r) { //checks if inside main carinoid
-		//cout << "iran" << endl;
 		return result;
 	}
 	double zr = 0;
@@ -116,11 +114,9 @@ vector<vector<double>> buddahBrotFunctionOpt(double r, double i, int iterations)
 		if (absSquared > 2.0) {
 			break;
 		}
-		//if (iter > 10) {
-			cnumber[0] = zr;
-			cnumber[1] = zi;
-			result.push_back(cnumber);
-		//}
+		cnumber[0] = zr;
+		cnumber[1] = zi;
+		result.push_back(cnumber);
 	}
 	return result;
 }
@@ -190,8 +186,6 @@ void buddahbrot(double rAxisMinimum, double rAxisMaximum, double iAxisMinimum, d
 		double in = i + iAxisMinimum;
 		
 		
-		//cout << "iran" << endl;
-		lock_guard<mutex> guard(vectorMutex);
 		if ((*orbits).size() < 10000) {
 			(*orbits).push_back(buddahBrotFunctionOpt(rn, in, iterations));
 		}		
@@ -235,9 +229,6 @@ int main(){
 		cout << "insert r,g,b values to color buddahbrot with" << endl;
 		cin >> color[0] >> color[1] >> color[2];
 		vector<thread> threads;
-		int threadNumber;
-		cout << "insert number of threads to use" << endl;
-		cin >> threadNumber;
 
 		auto start = std::chrono::system_clock::now();
 		CImg<double> buddahbrotImg(imageWidth, imageHeight, imgDepth, imgSpectrum, 0);
@@ -258,24 +249,21 @@ int main(){
 		double iPixelValue = iAbs / imageHeight;
 		
 
-		for (int t = 0; t < threadNumber; t++) {
 
-			thread newThread(buddahbrot, rAxisMinimum, rAxisMaximum, iAxisMinimum, iAxisMaximum, imageWidth, imageHeight, iterations, &orbits, (sampleSize / threadNumber), t);
-			threads.push_back(move(newThread));
-		}
+		thread newThread(buddahbrot, rAxisMinimum, rAxisMaximum, iAxisMinimum, iAxisMaximum, imageWidth, imageHeight, iterations, &orbits, sampleSize, 0);
+		threads.push_back(move(newThread));
+		
 		int sampleCounter = 0;
 		int initSampleSize = sampleSize;
 		while (sampleSize > 0) {
 			if (sampleCounter >= initSampleSize - 10000) {
 				if (orbits.size() == 0) {
-					std::this_thread::sleep_for(chrono::seconds(10));
 					if (orbits.size() == 0) {
 						break;
 					}
 				}
 			}
 			while (orbits.size() > 0) {
-				lock_guard<mutex> guard(vectorMutex);
 				if (orbits[0].size() < iterations + 1) {
 					for (int ci = 0; ci < orbits[0].size(); ci++) {
 						double r = orbits[0][ci][0];
@@ -290,7 +278,6 @@ int main(){
 								y--;
 							}
 
-							//cout << x << " " << y << endl;
 							matrix[y][x] = matrix[y][x] + 1;
 						}
 					}
@@ -298,7 +285,7 @@ int main(){
 				orbits.pop_front();
 				sampleSize--;
 				sampleCounter++;
-				if ((sampleCounter >= 1000000 && sampleCounter % 1000000 == 0) || sampleCounter >= initSampleSize - 10000) {
+				if ((sampleCounter >= 100000 && sampleCounter % 100000 == 0) || sampleCounter >= initSampleSize - 10000) {
 					cout << "sample counter is: " << sampleCounter << endl;
 					cout << "sample size is: " << sampleSize << endl;
 					cout << "orbits size is: " << orbits.size() << endl;
@@ -306,10 +293,8 @@ int main(){
 			}
 		}
 		
-		for (int t = 0; t < threadNumber; t++) {
-			(threads[t]).join();
-		}
-
+		(threads[0]).join();
+		
 		int colorInitValues[3] = {color[0], color[1], color[2]};
 
 		for (int y = 0; y < matrix.size(); y++) {
@@ -326,7 +311,7 @@ int main(){
 		cout << "program took " << diff.count() << " seconds to run" << endl;
 		
 		CImgDisplay display(buddahbrotImg, "", 0);
-		buddahbrotImg.save("bruddah-naive.bmp");
+		buddahbrotImg.save("buddah-naive.bmp");
 		while (!display.is_closed()) {
 			display.wait();
 		}
