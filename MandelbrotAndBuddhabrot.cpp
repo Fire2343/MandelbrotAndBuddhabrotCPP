@@ -39,7 +39,7 @@ int outsideMandelbrotOpt(double r, double i, int iterations) {
 	double result = 0;
 	int iter = 0;
 	if (absSquared * (8 * absSquared - 3) <= (double)3 / 32 - r) { //checks if inside main carinoid
-		return result;
+		return iterations;
 	}
 
 	double zr = 0;
@@ -151,9 +151,9 @@ void mandelbrotOpt(int imageWidth, int imageHeight, double rAxisCenter, double i
 			double in = i + iAxisMinimum;
 			int iters = outsideMandelbrotOpt(rn, in, iterations);
 			if (iters < iterations - 1) {
-				color[0] = 0.3 * iters;
-				color[1] = 0.5 * iters;
-				color[2] = 1.0 * iters;
+				color[0] = 0.0 * iters;
+				color[1] = 10.0 * iters;
+				color[2] = 15.0 * iters;
 				mandelbrot.draw_point(rPixelCounter, imageHeight - iPixelCounter, color);
 			}
 			iPixelCounter++;
@@ -186,9 +186,11 @@ void buddahbrot(double rAxisMinimum, double rAxisMaximum, double iAxisMinimum, d
 		double in = i + iAxisMinimum;
 		
 		
-		if ((*orbits).size() < 10000) {
-			(*orbits).push_back(buddahBrotFunctionOpt(rn, in, iterations));
-		}		
+		(*orbits).push_back(buddahBrotFunctionOpt(rn, in, iterations));
+		int orbitsSize = (*orbits).size();
+		if (orbitsSize % 100 == 0) {
+			cout << "orbits size is: " << orbitsSize << endl;
+		}
 	}
 }
 
@@ -228,7 +230,6 @@ int main(){
 		cin >> sampleSize;
 		cout << "insert r,g,b values to color buddahbrot with" << endl;
 		cin >> color[0] >> color[1] >> color[2];
-		vector<thread> threads;
 
 		auto start = std::chrono::system_clock::now();
 		CImg<double> buddahbrotImg(imageWidth, imageHeight, imgDepth, imgSpectrum, 0);
@@ -250,19 +251,18 @@ int main(){
 		
 
 
-		thread newThread(buddahbrot, rAxisMinimum, rAxisMaximum, iAxisMinimum, iAxisMaximum, imageWidth, imageHeight, iterations, &orbits, sampleSize, 0);
-		threads.push_back(move(newThread));
+		buddahbrot(rAxisMinimum, rAxisMaximum, iAxisMinimum, iAxisMaximum, imageWidth, imageHeight, iterations, &orbits, sampleSize, 0);
 		
 		int sampleCounter = 0;
 		int initSampleSize = sampleSize;
 		while (sampleSize > 0) {
-			if (sampleCounter >= initSampleSize - 10000) {
+			/*if (sampleCounter >= initSampleSize - 10000) {
 				if (orbits.size() == 0) {
 					if (orbits.size() == 0) {
 						break;
 					}
 				}
-			}
+			}*/
 			while (orbits.size() > 0) {
 				if (orbits[0].size() < iterations + 1) {
 					for (int ci = 0; ci < orbits[0].size(); ci++) {
@@ -285,16 +285,14 @@ int main(){
 				orbits.pop_front();
 				sampleSize--;
 				sampleCounter++;
-				if ((sampleCounter >= 100000 && sampleCounter % 100000 == 0) || sampleCounter >= initSampleSize - 10000) {
+				if (sampleCounter % 100 == 0) {
 					cout << "sample counter is: " << sampleCounter << endl;
 					cout << "sample size is: " << sampleSize << endl;
 					cout << "orbits size is: " << orbits.size() << endl;
 				}
 			}
 		}
-		
-		(threads[0]).join();
-		
+				
 		int colorInitValues[3] = {color[0], color[1], color[2]};
 
 		for (int y = 0; y < matrix.size(); y++) {
