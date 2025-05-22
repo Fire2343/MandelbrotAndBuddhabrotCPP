@@ -188,7 +188,7 @@ void buddahbrot(double rAxisMinimum, double rAxisMaximum, double iAxisMinimum, d
 		
 		(*orbits).push_back(buddahBrotFunctionOpt(rn, in, iterations));
 		int orbitsSize = (*orbits).size();
-		if (orbitsSize % 100 == 0) {
+		if (orbitsSize % 5000 == 0) {
 			cout << "orbits size is: " << orbitsSize << endl;
 		}
 	}
@@ -285,7 +285,7 @@ int main(){
 				orbits.pop_front();
 				sampleSize--;
 				sampleCounter++;
-				if (sampleCounter % 100 == 0) {
+				if (sampleCounter % 5000 == 0) {
 					cout << "sample counter is: " << sampleCounter << endl;
 					cout << "sample size is: " << sampleSize << endl;
 					cout << "orbits size is: " << orbits.size() << endl;
